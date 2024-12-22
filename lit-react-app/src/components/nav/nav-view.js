@@ -2,14 +2,11 @@ import { LitElement, html, css } from 'lit';
 
 class NavView extends LitElement {
   static styles = css`
-    :host {
-      display: block;
-      margin-bottom: 2rem;
-    }
-    .nav {
+    nav {
       background: #2c3e50;
       padding: 1rem;
       border-radius: 8px;
+      margin-bottom: 1rem;
     }
     ul {
       list-style: none;
@@ -25,10 +22,7 @@ class NavView extends LitElement {
       border-radius: 4px;
       transition: background 0.3s;
     }
-    a:hover {
-      background: #34495e;
-    }
-    .active {
+    a:hover, a.active {
       background: #34495e;
     }
   `;
@@ -39,11 +33,29 @@ class NavView extends LitElement {
 
   render() {
     return html`
-      <nav class="nav">
+      <nav>
         <ul>
-          <li><a href="#" @click=${() => this.dispatchEvent(new CustomEvent('navigate', { detail: 'dashboard' }))}>Dashboard</a></li>
-          <li><a href="#" @click=${() => this.dispatchEvent(new CustomEvent('navigate', { detail: 'profile' }))}>Profile</a></li>
-          <li><a href="#" @click=${() => this.dispatchEvent(new CustomEvent('navigate', { detail: 'transactions' }))}>Transactions</a></li>
+          <li>
+            <a href="#" 
+               class=${this.currentPage === 'dashboard' ? 'active' : ''}
+               @click=${() => this.dispatchEvent(new CustomEvent('navigate', {detail: 'dashboard'}))}>
+               Dashboard
+            </a>
+          </li>
+          <li>
+            <a href="#" 
+               class=${this.currentPage === 'profile' ? 'active' : ''}
+               @click=${() => this.dispatchEvent(new CustomEvent('navigate', {detail: 'profile'}))}>
+               Profile
+            </a>
+          </li>
+          <li>
+            <a href="#" 
+               class=${this.currentPage === 'transactions' ? 'active' : ''}
+               @click=${() => this.dispatchEvent(new CustomEvent('navigate', {detail: 'transactions'}))}>
+               Transactions
+            </a>
+          </li>
         </ul>
       </nav>
     `;
