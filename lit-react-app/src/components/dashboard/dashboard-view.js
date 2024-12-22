@@ -1,110 +1,123 @@
 import { LitElement, html, css } from 'lit';
-import '../profile/profile-view.js';
-import '../transactions/transaction-view.js';
-import { BankService } from '../../services/bank-service.js';
+import { Chart } from 'chart.js/auto';
 
 class DashboardView extends LitElement {
   static styles = css`
     :host {
       display: block;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 20px;
     }
     .dashboard-grid {
       display: grid;
-      grid-template-columns: 300px 1fr;
-      gap: 20px;
-    }
-    .summary-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 1rem;
-      margin-bottom: 1rem;
+      margin-bottom: 2rem;
     }
-    .card {
-      background: white;
-      padding: 1rem;
+    .widget {
+      background: var(--bg-color);
+      padding: 1.5rem;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: transform 0.2s;
     }
-    .card:hover {
-      transform: translateY(-2px);
+    .balance {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary-color);
     }
-    .error-message {
-      color: red;
-      padding: 1rem;
-      background: #fee;
-      border-radius: 4px;
+    .chart-container {
+      height: 300px;
+      margin-top: 1rem;
     }
-    @media (max-width: 768px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
+    .transactions-list {
+      list-style: none;
+      padding: 0;
     }
+    .transaction-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.8rem 0;
+      border-bottom: 1px solid #eee;
+    }
+    .amount.positive { color: #4CAF50; }
+    .amount.negative { color: #f44336; }
   `;
 
   static properties = {
-    summary: { type: Object },
-    loading: { type: Boolean },
-    error: { type: String }
+    accountData: { type: Object },
+    recentTransactions: { type: Array }
   };
 
   constructor() {
     super();
-    this.summary = null;
-    this.loading = true;
-    this.error = '';
+    this.accountData = {
+      balance: 5000.00,
+      income: 3500.00,
+      expenses: 2000.00
+    };
+    this.recentTransactions = [];
   }
 
-  async firstUpdated() {
-    await this.loadDashboardData();
+  firstUpdated() {
+    this.loadData();
+    this.renderCharts();
   }
 
-  async loadDashboardData() {
+  async loadData() {
     try {
-      this.loading = true;
-      this.error = '';
-      this.summary = await BankService.getMonthlySummary();
-    } catch (err) {
-      this.error = 'Failed to load dashboard data';
-      console.error(err);
-    } finally {
-      this.loading = false;
+      const response = await fetch('/api/dashboard');
+      const data = await response.json();
+      this.accountData = data.account;
+      this.recentTransactions = data.transactions;
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
     }
+  }
+
+  renderCharts() {
+    const ctx = this.renderRoot.querySelector('#spendingChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Income', 'Expenses'],
+        datasets: [{
+          data: [this.accountData.income, this.accountData.expenses],
+          backgroundColor: ['#4CAF50', '#f44336']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
   }
 
   render() {
     return html`
       <div class="dashboard-grid">
-        <aside>
-          <profile-view></profile-view>
-        </aside>
-        <main>
-          ${this.error ? html`
-            <div class="error-message">${this.error}</div>
-          ` : ''}
-          
-          <div class="summary-cards">
-            <div class="card">
-              <h3>Monthly Summary</h3>
-              ${this.loading ? html`<p>Loading...</p>` : html`
-                <p>Income: $${this.summary?.income || 0}</p>
-                <p>Expenses: $${this.summary?.expenses || 0}</p>
-                <p>Net: $${this.summary?.balance || 0}</p>
-              `}
-            </div>
-            <div class="card">
-              <h3>Quick Actions</h3>
-              <button @click=${() => this.loadDashboardData()} 
-                      ?disabled=${this.loading}>
-                ${this.loading ? 'Refreshing...' : 'Refresh Data'}
-              </button>
-            </div>
+        <div class="widget">
+          <h3>Account Balance</h3>
+          <div class="balance">$${this.accountData.balance.toFixed(2)}</div>
+        </div>
+        
+        <div class="widget">
+          <h3>Monthly Overview</h3>
+          <div class="chart-container">
+            <canvas id="spendingChart"></canvas>
           </div>
-          <transaction-view></transaction-view>
-        </main>
+        </div>
+
+        <div class="widget">
+          <h3>Recent Transactions</h3>
+          <ul class="transactions-list">
+            ${this.recentTransactions.map(t => html`
+              <li class="transaction-item">
+                <div>${t.description}</div>
+                <div class="amount ${t.amount > 0 ? 'positive' : 'negative'}">
+                  ${t.amount > 0 ? '+' : ''}$${Math.abs(t.amount).toFixed(2)}
+                </div>
+              </li>
+            `)}
+          </ul>
+        </div>
       </div>
     `;
   }

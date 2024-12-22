@@ -1,82 +1,158 @@
 import { LitElement, html, css } from 'lit';
-import { BankService } from '../../services/bank-service.js';
 
 class ProfileView extends LitElement {
   static styles = css`
     :host {
       display: block;
     }
-    .profile-card {
-      background: white;
-      padding: 20px;
+    .profile-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .profile-header {
+      background: var(--bg-color);
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      margin: 0 auto 1rem;
+      background: var(--secondary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      color: white;
+    }
+    .profile-sections {
+      display: grid;
+      gap: 2rem;
+    }
+    .section {
+      background: var(--bg-color);
+      padding: 1.5rem;
       border-radius: 8px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    .profile-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1rem;
-      padding-bottom: 1rem;
+    .section h3 {
+      margin-top: 0;
+      color: var(--primary-color);
+    }
+    .edit-button {
+      padding: 0.8rem 1.5rem;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .activity-list {
+      list-style: none;
+      padding: 0;
+    }
+    .activity-item {
+      padding: 1rem 0;
       border-bottom: 1px solid #eee;
-    }
-    .avatar {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-    .account-info {
-      margin-top: 1rem;
-    }
-    .balance {
-      font-size: 1.5rem;
-      color: #2c3e50;
-      margin: 0.5rem 0;
-    }
-    .account-number {
-      color: #666;
-      font-family: monospace;
     }
   `;
 
   static properties = {
-    profile: { type: Object }
+    user: { type: Object },
+    isEditing: { type: Boolean },
+    activities: { type: Array }
   };
 
   constructor() {
     super();
-    this.profile = null;
+    this.user = {
+      name: 'John Doe',
+      email: 'john@example.com',
+      phone: '+1 234 567 8900',
+      joined: '2024-01-01'
+    };
+    this.isEditing = false;
+    this.activities = [
+      { date: '2024-03-20', action: 'Login', details: 'Web browser' },
+      { date: '2024-03-19', action: 'Updated profile', details: 'Changed email' }
+    ];
   }
 
-  async firstUpdated() {
+  toggleEdit() {
+    this.isEditing = !this.isEditing;
+  }
+
+  async handleProfileUpdate(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const updatedData = Object.fromEntries(formData);
+    
     try {
-      this.profile = await BankService.getProfile();
+      // API call to update profile
+      this.user = { ...this.user, ...updatedData };
+      this.isEditing = false;
+      this.dispatchEvent(new CustomEvent('profile-updated', { 
+        detail: this.user 
+      }));
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error('Failed to update profile:', error);
     }
   }
 
   render() {
-    if (!this.profile) {
-      return html`<div>Loading profile...</div>`;
-    }
-
     return html`
-      <div class="profile-card">
+      <div class="profile-container">
         <div class="profile-header">
-          <img class="avatar" src="${this.profile.avatar || 'https://via.placeholder.com/80'}" alt="Profile">
-          <div>
-            <h2>${this.profile.name}</h2>
-            <p>${this.profile.email}</p>
-          </div>
+          <div class="avatar">👤</div>
+          <h2>${this.user.name}</h2>
+          <p>Member since ${new Date(this.user.joined).toLocaleDateString()}</p>
         </div>
-        
-        <div class="account-info">
-          <p class="account-number">Account: ${this.profile.accountNumber}</p>
-          <p class="balance">Balance: ${this.profile.currency} ${this.profile.balance.toFixed(2)}</p>
-          <p>Account Type: ${this.profile.accountType}</p>
-          <p>Last Login: ${new Date(this.profile.lastLogin).toLocaleString()}</p>
+
+        <div class="profile-sections">
+          <div class="section">
+            <h3>Personal Information</h3>
+            ${this.isEditing ? html`
+              <form @submit=${this.handleProfileUpdate}>
+                <div>
+                  <label>Name</label>
+                  <input name="name" value=${this.user.name}>
+                </div>
+                <div>
+                  <label>Email</label>
+                  <input name="email" type="email" value=${this.user.email}>
+                </div>
+                <div>
+                  <label>Phone</label>
+                  <input name="phone" value=${this.user.phone}>
+                </div>
+                <button type="submit">Save Changes</button>
+              </form>
+            ` : html`
+              <div>
+                <p><strong>Email:</strong> ${this.user.email}</p>
+                <p><strong>Phone:</strong> ${this.user.phone}</p>
+                <button class="edit-button" @click=${this.toggleEdit}>
+                  Edit Profile
+                </button>
+              </div>
+            `}
+          </div>
+
+          <div class="section">
+            <h3>Recent Activity</h3>
+            <ul class="activity-list">
+              ${this.activities.map(activity => html`
+                <li class="activity-item">
+                  <div><strong>${activity.date}</strong></div>
+                  <div>${activity.action} - ${activity.details}</div>
+                </li>
+              `)}
+            </ul>
+          </div>
         </div>
       </div>
     `;
